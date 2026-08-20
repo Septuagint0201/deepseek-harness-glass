@@ -14,6 +14,10 @@ import SwiftUI
 import WebKit
 import AppKit
 
+private extension Notification.Name {
+    static let refreshGlassWebView = Notification.Name("refreshGlassWebView")
+}
+
 // MARK: - 玻璃 CSS（与 Electron 版同款，注入到 dsh 前端）
 
 let GLASS_CSS = """
@@ -248,7 +252,7 @@ final class BackendController: NSObject, ObservableObject {
 
         let proc = Process()
         proc.executableURL = node
-        proc.arguments = ["--expose-internals", bin.path, "web", "--port", "0"]
+        proc.arguments = ["--expose-internals", bin.path, "web", "--no-open", "--port", "0"]
         var env = ProcessInfo.processInfo.environment
         env["DSH_HOME"] = homePath
         proc.environment = env
@@ -390,6 +394,7 @@ final class GlassWebViewController: NSViewController, WKNavigationDelegate, WKDo
     private let webView: WKWebView
     private var loaded = false
     private var contrastObserver: NSObjectProtocol?
+    private var refreshObserver: NSObjectProtocol?
 
     init(url: URL) {
         let config = WKWebViewConfiguration()
@@ -454,10 +459,24 @@ final class GlassWebViewController: NSViewController, WKNavigationDelegate, WKDo
         ) { [weak self] _ in
             self?.applyContrast()
         }
+        refreshObserver = NotificationCenter.default.addObserver(
+            forName: .refreshGlassWebView, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.webView.reload()
+        }
         webView.load(URLRequest(url: url))
     }
 
     required init?(coder: NSCoder) { fatalError("not supported") }
+
+    deinit {
+        if let contrastObserver {
+            NotificationCenter.default.removeObserver(contrastObserver)
+        }
+        if let refreshObserver {
+            NotificationCenter.default.removeObserver(refreshObserver)
+        }
+    }
 
     override func loadView() {
         view = webView
@@ -763,7 +782,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    /// 手工菜单：关于/退出 + Harness 快捷入口。
+    /// 手工菜单：关于/退出 + 标准编辑操作 + Harness 快捷入口。
     private func buildMenu() {
         let mainMenu = NSMenu()
 
@@ -781,13 +800,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             keyEquivalent: "q")
         appMenuItem.submenu = appMenu
 
+        let editMenuItem = NSMenuItem()
+        mainMenu.addItem(editMenuItem)
+        let editMenu = NSMenu(title: "编辑")
+        editMenu.addItem(
+            withTitle: "撤销",
+            action: Selector(("undo:")),
+            keyEquivalent: "z")
+        let redoItem = editMenu.addItem(
+            withTitle: "重做",
+            action: Selector(("redo:")),
+            keyEquivalent: "Z")
+        redoItem.keyEquivalentModifierMask = [.command, .shift]
+        editMenu.addItem(.separator())
+        editMenu.addItem(
+            withTitle: "剪切",
+            action: #selector(NSText.cut(_:)),
+            keyEquivalent: "x")
+        editMenu.addItem(
+            withTitle: "复制",
+            action: #selector(NSText.copy(_:)),
+            keyEquivalent: "c")
+        editMenu.addItem(
+            withTitle: "粘贴",
+            action: #selector(NSText.paste(_:)),
+            keyEquivalent: "v")
+        editMenu.addItem(
+            withTitle: "全选",
+            action: #selector(NSText.selectAll(_:)),
+            keyEquivalent: "a")
+        editMenuItem.submenu = editMenu
+
         let harnessMenuItem = NSMenuItem()
         mainMenu.addItem(harnessMenuItem)
         let harnessMenu = NSMenu(title: "Harness")
         harnessMenu.addItem(
+            withTitle: "刷新 WebView",
+            action: #selector(AppDelegate.refreshWebView(_:)),
+            keyEquivalent: "r")
+        let restartItem = harnessMenu.addItem(
             withTitle: "重启后端服务",
             action: #selector(AppDelegate.restartBackend(_:)),
             keyEquivalent: "r")
+        restartItem.keyEquivalentModifierMask = [.command, .shift]
         harnessMenu.addItem(
             withTitle: "在浏览器中打开",
             action: #selector(AppDelegate.openInBrowser(_:)),
@@ -891,6 +946,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func openInBrowser(_ sender: Any?) {
         guard let u = BackendController.shared.url else { return }
         NSWorkspace.shared.open(u)
+    }
+
+    @objc private func refreshWebView(_ sender: Any?) {
+        NotificationCenter.default.post(name: .refreshGlassWebView, object: nil)
     }
 
     @objc private func restartBackend(_ sender: Any?) {
