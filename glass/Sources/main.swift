@@ -504,7 +504,12 @@ final class GlassWebViewController: NSViewController, WKNavigationDelegate, WKDo
     }
 
     func downloadDidFinish(_ download: WKDownload) {
-        appendLog("[download] 完成：\(download.originalRequest?.url?.lastPathComponent ?? "file")\n")
+        let name = download.originalRequest?.url?.lastPathComponent ?? "file"
+        appendLog("[download] 完成：\(name)\n")
+        // 在访达中高亮刚下载的文件
+        if let path = download.progress.fileURL {
+            NSWorkspace.shared.activateFileViewerSelecting([path])
+        }
     }
 
     func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
