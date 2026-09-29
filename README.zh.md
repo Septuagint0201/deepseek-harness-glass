@@ -1,150 +1,76 @@
 # DeepSeek Harness Glass
 
-[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的原生 macOS 外壳——
-**你熟悉的 dsh，装进一块真正的液态玻璃里。**
+为本机安装的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
+提供原生 macOS Liquid Glass 窗口。此分支保留 PR #1 的原生菜单与快捷键，独立继续开发，
+适配 **dsh 0.1.7-rc.2**。应用仅包含 Swift 前端封装，不携带 Node.js、dsh 后端、
+npm 包或单独复制的 Web 前端。
 
-DeepSeek Harness Glass 把官方 `dsh` 引擎和它的 Web 界面封装成一个自包含的
-macOS 应用。外壳不是 Electron / Tauri，而是一个精简的 SwiftUI 程序：整个窗口
-直接落在苹果公开的
-[`glassEffect`](https://developer.apple.com/documentation/swiftui/glasseffect(_:in:))
-材质上，边缘折射、透镜感和分层材质由系统渲染，与 macOS 26 原生应用一致，
-而非 CSS 模拟。
+## 环境要求
 
-- **英文 README:** [README.md](README.md)
+- macOS 26 及以上、Apple Silicon。
+- 单独安装 dsh 及其要求的 Node.js。测试版本安装命令：
+  `npm install -g @deepseek-ai/dsh@0.1.7-rc.2`。
+- 确认终端能执行 `dsh --version` 和 `dsh web --no-open`。
 
-## 系统要求
+应用沿用 `DSH_HOME`，默认 `~/.dsh`。数据、凭据、插件、迁移和升级由本机 dsh 管理；
+Glass 不安装或升级后端。
 
-- macOS 26 或更高（液态玻璃是 Tahoe 时代的 API）
-- Apple 芯片（arm64）
+## 连接与进程管理
 
-## 安装
+1. 优先探测 `http://127.0.0.1:3080/`，之后记住最近成功连接的地址。
+   `DSH_WEB_URL` 可覆盖地址并指定自定义端口。
+2. 已有 dsh 服务时直接复用。0.1.7-rc.2 首次连接需要认证：在连接界面粘贴
+   `dsh web` 输出的完整链接（包含 token），或通过 `DSH_WEB_URL` 提供。
+   WebKit 保存认证 cookie，Glass 仅持久保存去除 token 的地址。
+3. 只有连接被拒绝、没有服务监听时，才静默执行本机
+   `dsh web --no-open --host <本地地址> --port <端口>`；不打开终端或浏览器。
+   从完整输出行读取含 token 的启动链接。
+4. 关闭窗口后驻留菜单栏；退出应用仅结束 Glass 自己启动的子进程。
+   外部 dsh 不会被停止，“重启”操作对外部服务只重新连接。
+   自己启动的进程意外退出后自动重试一次。
 
-从 [Releases](https://github.com/qniequn-boop/deepseek-harness-glass/releases)
-下载 `DeepSeek Harness Glass-<版本>.dmg`，打开后把应用拖进「应用程序」。
+从 Finder 启动时通过登录／交互式 zsh 加载用户的 fnm、nvm、Homebrew 配置。
+`DSH_EXECUTABLE` 可指定可执行文件的绝对路径，其 Node 仍需在该 shell 的 PATH 中。
+仅支持本地 HTTP 地址；不自动扫描其他端口，需要提供已有服务的启动链接。
+端口占用、认证未完成或服务无响应时显示连接提示，不重复启动后端。
 
-当前构建为 ad-hoc 签名、未公证。首次打开时 macOS 会提示「无法验证开发者」：
-**右键点击应用 → 打开**，再确认一次即可（仅需一次）。
+## 原生功能
 
-首次运行后在应用内的「设置」中填入你自己的 DeepSeek API Key。应用数据存放于
-`~/.dsh`——与 dsh 命令行版共用同一目录，已有的会话、profile 和
-`cordis.patch.yml` 补丁会自动生效。
+- Liquid Glass 原生窗口、透明 WKWebView、CSS 主题令牌覆盖。
+- 原生菜单、快捷键、刷新、浏览器打开、菜单栏驻留。
+- 下载后在 Finder 中显示文件，共享 CLI 数据，分层透明界面。
+- 启动日志：`~/Library/Logs/DeepSeek Harness Glass.log`，token 自动脱敏。
 
-## 特性
+## 构建与验证
 
-- **真·液态玻璃** — 窗口背景是原生 `glassEffect` 材质，边缘光学、圆角处理、
-  折射全部由系统渲染，与 macOS 26 自带应用同款。
-- **全窗玻璃** — 玻璃延伸到标题栏区域（`fullSizeContentView` + 零安全区宿主
-  视图），顶部没有"无玻璃"的条带。
-- **完全自包含** — 内置 Node.js v24 与完整 dsh 后端 payload
-  （`@deepseek-ai/dsh`、`@deepseek-ai/dsh-web-frontend`，精确 pin 版本）。
-  无需安装 Node.js，运行时不下载任何东西。
-- **与 CLI 共享状态** — `DSH_HOME` 默认 `~/.dsh`：凭据、会话、设置、已安装
-  插件与命令行版完全一致；可用 `DSH_HOME` 环境变量覆盖。
-- **动态文字对比度** — 外壳在启动与更换壁纸时采样桌面壁纸平均亮度，在深/浅
-  两套文字色板间带迟滞地切换；拖动窗口绝不触发翻转（苹果的设计原则：大表面
-  不应随背景翻转）。
-- **层级磨砂** — 输入框、弹窗、菜单、悬浮卡各有递进半透明着色与
-  `backdrop-filter` 扫描，悬浮面呈现"玻璃叠玻璃"的层次。
-- **智能端口复用** — 若 127.0.0.1:3080 已有 dsh 在运行，外壳直接挂接，
-  不重复拉起实例。
-- **崩溃自动恢复** — 内置后端意外退出自动重启一次；连续两次失败显示带
-  日志路径的重试页。
-- **托盘常驻** — 关闭窗口只是隐藏；菜单栏图标提供 显示/重启服务/浏览器
-  打开/打开配置目录/打开日志/退出 全套操作。
-- **干净的生命周期** — 退出、关窗或被 kill 都会先终止内置后端，不留孤儿进程。
-
-## 工作原理
-
-```
-DeepSeek Harness.app
-└── Contents/
-    ├── MacOS/DeepSeek Harness        ← Swift 外壳（glass/Sources/main.swift）
-    └── Resources/
-        ├── node/node                 ← 内置 Node.js v24（官方二进制）
-        └── backend/node_modules/     ← 精确 pin 的 dsh 引擎 + Web 前端
-```
-
-1. 外壳用内置 Node 启动后端：
-   `node --expose-internals …/@deepseek-ai/dsh/lib/bin.js web --port 0`
-   （`--expose-internals` 是 dsh web profile 中 HMR 服务的要求）。
-2. 解析 stdout 里的 `dsh web: http://127.0.0.1:<端口>`，用透明 `WKWebView`
-   加载。端口随机、只绑回环地址，不对外暴露。
-3. `WKUserScript` 注入 `GLASS_CSS`，重染 dsh 的设计令牌（`--dsw-alias-*`，
-   前端自带的主题扩展点），整界面半透明化，dsh 源码零改动。
-4. 原生玻璃材质位于透明网页内容之下。
-
-## 从源码构建
-
-前置条件：Xcode 命令行工具（`swiftc`）、`npm`、网络连接（下载下面两项）。
+需要支持 macOS 26 SDK 的 Xcode Command Line Tools。构建无需 npm 或后端下载。
 
 ```sh
-# 1. 内置 Node 运行时（官方二进制，精确 pin）
-mkdir -p glass/build/node
-curl -fsSL https://nodejs.org/dist/v24.19.0/node-v24.19.0-darwin-arm64.tar.gz -o /tmp/node.tgz
-tar -xzf /tmp/node.tgz -C /tmp
-cp /tmp/node-v24.19.0-darwin-arm64/bin/node glass/build/node/node
-
-# 2. 后端 payload（npm 精确 pin）+ 冒烟测试 + 组装
-cd glass
-./repair-backend.sh
+APP_PATH="$PWD/glass/dist/DeepSeek Harness.app" glass/assemble.sh
+python3 glass/Tests/smoke.py
+# 用独立临时 DSH_HOME 验证本机实际 dsh：
+GLASS_TEST_REAL_DSH=1 python3 glass/Tests/smoke.py
 ```
 
-应用默认输出到 `/Applications/DeepSeek Harness.app`；用 `APP_PATH` 指定别处：
+不设置 `APP_PATH` 时默认安装到 `/Applications/DeepSeek Harness.app`。
+应用使用 ad-hoc 签名，未公证。发布 CI 仅编译此前端封装并打包为 DMG。
 
-```sh
-APP_PATH="$PWD/dist/DeepSeek Harness.app" ./assemble.sh
-```
+## 排错
 
-制作安装镜像：
-
-```sh
-mkdir -p dmg-stage && cp -R "/Applications/DeepSeek Harness.app" dmg-stage/
-ln -s /Applications dmg-stage/Applications
-hdiutil create -volname "DeepSeek Harness Glass" -srcfolder dmg-stage \
-  -ov -format UDZO "dist/DeepSeek Harness Glass-0.3.0.dmg"
-```
-
-推送 `v*` 标签会触发 `.github/workflows/release.yml`，自动完成以上全部步骤
-并把 DMG 挂到 Release。
-
-## 故障排查
-
-**「DeepSeek Harness 启动失败（code 1）」** — 内置后端 payload 缺包。运行：
-
-```sh
-cd glass && ./repair-backend.sh
-```
-
-该脚本会以精确 pin 重装 payload、冒烟测试后端并重新打包。
-
-**App 与 CLI 不能同时运行** — 两者共用 `~/.dsh`。需要同时运行时给 App 设置
-不同的 `DSH_HOME`。
+找不到 dsh 时请单独安装并重试。启动失败时查看日志，并在终端检查 CLI 命令。
+已有服务需要认证时粘贴启动链接；外部服务重启会生成新 token，必要时使用新链接。
+Glass 不读取或伪造 dsh 凭据。
 
 ## 项目结构
 
-```
-glass/
-  Sources/main.swift     全部外壳逻辑（约 700 行，唯一自定义代码）
-  assemble.sh            构建 + ad-hoc 签名 + 原子替换
-  repair-backend.sh      一键重装 payload + 冒烟测试 + 重新打包
-  Info.plist             bundle 元数据（LSMinimumSystemVersion 26.0）
-build/icon.icns          应用图标（源自 dsh 鲸鱼 favicon）
-```
+- `glass/Sources/main.swift`：原生窗口、菜单、WebKit 与 CSS。
+- `glass/Sources/BackendController.swift`：本地服务连接和进程管理。
+- `glass/Tests/`：连接与生命周期测试。
+- `glass/assemble.sh`：编译与签名前端应用。
+- `glass/Info.plist`：应用元数据。
+- `build/icon.icns`：应用图标。
 
-## 设计说明
+## 声明与许可
 
-窗口 `isOpaque = false`、背景透明，玻璃材质才能折射桌面。网页内容出于平台
-隐私边界无法采样窗口背后的画面，因此悬浮面采用分层着色 + 对页面自身内容做
-`backdrop-filter`，而非第二道原生模糊。文字令牌保持纯色，配合 0.5% 白色衬底
-与抗锯齿渲染，避免背景色渗入字形。
-
-## 免责声明
-
-本项目是开源 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
-的独立、非官方外壳，与 DeepSeek 无隶属或背书关系。「DeepSeek」及相关标识归
-其权利人所有。
-
-## 许可证
-
-MIT — 见 [LICENSE](LICENSE)。捆绑组件的许可见
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+这是独立、非官方的封装，与 DeepSeek 无隶属或背书关系。
+采用 MIT 许可，详见 [LICENSE](LICENSE) 和 [第三方声明](THIRD_PARTY_NOTICES.md)。

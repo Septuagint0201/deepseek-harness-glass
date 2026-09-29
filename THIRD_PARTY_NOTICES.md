@@ -8,17 +8,10 @@ are available at the linked sources.
 
 - Project: <https://github.com/deepseek-ai/deepseek-harness>
 - License: MIT
-- Usage: the dsh backend engine (`@deepseek-ai/dsh`) and web frontend
-  (`@deepseek-ai/dsh-web-frontend`) are bundled unmodified from the official
-  npm releases, pinned to exact versions. The whale favicon in `build/icon.icns`
-  is derived from the dsh repository's `apps/web/public/favicon.svg`.
-
-## Node.js
-
-- Project: <https://nodejs.org/>
-- License: MIT (with bundled dependencies under their own permissive licenses)
-- Usage: the official Node.js v24 darwin-arm64 binary is bundled to run the
-  dsh backend, so end users do not need a Node.js installation.
+- Usage: the icon in `build/icon.icns` and the template fish in
+  `glass/assets/fish.svg` derive from dsh artwork. The shell connects to the
+  user's separately installed dsh and displays its web UI. No dsh engine,
+  frontend npm package, or Node.js runtime is distributed in this app.
 
 ## Apple platform APIs
 

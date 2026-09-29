@@ -1,11 +1,10 @@
 // DeepSeek Harness — 原生 SwiftUI 液态玻璃壳
 //
-// 架构与 Electron 壳完全一致，但玻璃效果使用苹果公开 API：
+// 仅提供原生前端窗口，玻璃效果使用苹果公开 API：
 //   - 窗口级玻璃：.containerBackground(.glass, for: .window)（macOS 26+，
 //     苹果自家应用同款，含边缘折射/散射）
 //   - 透明 WKWebView 加载 dsh 前端，注入 GLASS_CSS 把设计令牌改为半透明
-//   - 内置 Node + dsh 后端引擎（从 Electron 版的 node_modules 复用），
-//     spawn `dsh web --port 0`，解析 stdout 拿到端口后加载
+//   - 连接已有 dsh；否则静默启动用户安装的 `dsh web --no-open`
 //   - DSH_HOME 默认 ~/.dsh，与 CLI 共享凭据/会话/配置
 //
 // 编译：swiftc -O -parse-as-library -target arm64-apple-macosx26.0 Sources/main.swift
@@ -41,7 +40,8 @@ body:not([data-ds-dark-theme]) #root::before {
   background: rgba(255, 255, 255, 0.01);
   pointer-events: none;
 }
-html { color-scheme: light !important; }
+body:not([data-ds-dark-theme]) { color-scheme: light; }
+body[data-ds-dark-theme] { color-scheme: dark; }
 html, body { -webkit-font-smoothing: antialiased !important; }
 /* 极淡衬底：给文字一个近实底，阻断玻璃背后颜色渗进字形（4% 几乎不可见） */
 body::before {
@@ -52,11 +52,15 @@ body::before {
   z-index: -1;
   pointer-events: none;
 }
+/* Keep modal cards above their dimmer; never blur arbitrary ancestors:
+   backdrop-filter changes containing blocks and flattens nested surfaces. */
 body[data-ds-dark-theme] {
+  --dsw-mask-blur: blur(2px) !important;
+  --dsw-alias-bg-mask-1: rgba(0, 0, 0, 0.22) !important;
   --dsw-alias-bg-base: rgba(18, 19, 23, 0.03) !important;
-  --dsw-alias-bg-layer-1: rgba(28, 29, 34, 0.03) !important;
-  --dsw-alias-bg-layer-2: rgba(36, 37, 43, 0.03) !important;
-  --dsw-alias-bg-layer-3: rgba(44, 45, 52, 0.03) !important;
+  --dsw-alias-bg-layer-1: rgba(28, 29, 34, 0.65) !important;
+  --dsw-alias-bg-layer-2: rgba(36, 37, 43, 0.94) !important;
+  --dsw-alias-bg-layer-3: rgba(44, 45, 52, 0.88) !important;
   --dsw-alias-bg-module-platform: rgba(13, 14, 18, 0.03) !important;
   --dsw-alias-bg-overlay: rgba(44, 45, 52, 0.70) !important;
   --dsw-alias-bg-multi-select: rgba(33, 34, 40, 0.03) !important;
@@ -87,10 +91,12 @@ body[data-ds-dark-theme] {
   --dsw-alias-markdown-placeholder: rgb(101, 103, 107) !important;
 }
 body:not([data-ds-dark-theme]) {
+  --dsw-mask-blur: blur(2px) !important;
+  --dsw-alias-bg-mask-1: rgba(20, 25, 35, 0.10) !important;
   --dsw-alias-bg-base: rgba(255, 255, 255, 0.00) !important;
-  --dsw-alias-bg-layer-1: rgba(255, 255, 255, 0.00) !important;
-  --dsw-alias-bg-layer-2: rgba(255, 255, 255, 0.00) !important;
-  --dsw-alias-bg-layer-3: rgba(255, 255, 255, 0.00) !important;
+  --dsw-alias-bg-layer-1: rgba(222, 226, 234, 0.55) !important;
+  --dsw-alias-bg-layer-2: rgba(250, 251, 253, 0.94) !important;
+  --dsw-alias-bg-layer-3: rgba(240, 243, 248, 0.88) !important;
   --dsw-alias-bg-module-platform: rgba(255, 255, 255, 0.00) !important;
   --dsw-alias-bg-overlay: rgba(255, 255, 255, 0.60) !important;
   --dsw-alias-toast-bg: rgba(60, 60, 61, 0.92) !important;
@@ -99,8 +105,8 @@ body:not([data-ds-dark-theme]) {
   --dsw-specific-menu: rgba(255, 255, 255, 0.50) !important;
   --dsw-specific-selector: rgba(255, 255, 255, 0.45) !important;
   --dsw-specific-tip: rgba(255, 255, 255, 0.40) !important;
-  --dsw-specific-input-major: rgba(255, 255, 255, 0.35) !important;
-  --dsw-specific-login-input: rgba(255, 255, 255, 0.45) !important;
+  --dsw-specific-input-major: rgba(211, 217, 228, 0.55) !important;
+  --dsw-specific-login-input: rgba(211, 217, 228, 0.60) !important;
   --dsw-specific-bubble: rgba(255, 255, 255, 0.00) !important;
   --dsw-specific-bubble-highlight: rgba(255, 255, 255, 0.00) !important;
   --dsw-hovercard-bg: rgba(255, 255, 255, 0.55) !important;
@@ -126,196 +132,6 @@ body:not([data-ds-dark-theme]) {
   --dsw-alias-markdown-placeholder: var(--glass-txt-placeholder, rgb(162, 164, 166)) !important;
 }
 """
-
-// MARK: - 后端控制器（实例复用 + spawn 内置 dsh + 崩溃自动恢复 + 生命周期）
-
-final class BackendController: NSObject, ObservableObject {
-    static let shared = BackendController()
-
-    @Published var url: URL?
-    @Published var errorText: String?
-
-    private var process: Process?
-    private var captured = ""
-    private var restartCount = 0
-    private var suppressNextExit = false
-    private var isQuitting = false
-    /// 该实例是否由我们拉起（复用外部 dsh 时不拥有、退出时不能杀）。
-    private(set) var ownsBackend = true
-
-    var homePath: String {
-        if let env = ProcessInfo.processInfo.environment["DSH_HOME"], !env.isEmpty {
-            return env
-        }
-        return (NSHomeDirectory() as NSString).appendingPathComponent(".dsh")
-    }
-
-    var logPath: String {
-        let dir = (NSHomeDirectory() as NSString).appendingPathComponent("Library/Logs")
-        try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
-        return (dir as NSString).appendingPathComponent("DeepSeek Harness Glass.log")
-    }
-
-    override init() {
-        super.init()
-        NotificationCenter.default.addObserver(
-            self, selector: #selector(appWillTerminate),
-            name: NSApplication.willTerminateNotification, object: nil
-        )
-    }
-
-    @objc private func appWillTerminate() {
-        shutdown()
-    }
-
-    /// 终止我们自己的后端子进程（复用外部实例时不杀它）。
-    func shutdown() {
-        isQuitting = true
-        if ownsBackend, let p = process, p.isRunning {
-            p.terminate()
-        }
-    }
-
-    private func appendLog(_ text: String) {
-        if let h = FileHandle(forWritingAtPath: logPath) {
-            h.seekToEndOfFile()
-            h.write(Data(text.utf8))
-            try? h.close()
-        } else {
-            try? Data(text.utf8).write(to: URL(fileURLWithPath: logPath))
-        }
-    }
-
-    /// 启动后端。先探测 127.0.0.1:3080 上是否已有 dsh 实例：
-    /// 有则直接挂接（不重复起实例），没有才拉起内置引擎。
-    func start(autoRestart: Bool = false) {
-        guard process == nil else { return }
-        if !autoRestart { restartCount = 0 }
-        errorText = nil
-        captured = ""
-
-        checkForExistingInstance { [weak self] found in
-            guard let self else { return }
-            if found {
-                self.ownsBackend = false
-                self.url = URL(string: "http://127.0.0.1:3080/")
-                self.appendLog("[backend] 检测到 127.0.0.1:3080 已有 dsh 实例，直接挂接\n")
-            } else {
-                self.spawnBackend()
-            }
-        }
-    }
-
-    /// 手动重启后端（菜单/托盘入口）。
-    func restart() {
-        url = nil
-        captured = ""
-        restartCount = 0
-        if ownsBackend, let p = process, p.isRunning {
-            suppressNextExit = true
-            p.terminate()
-        }
-        process = nil
-        start()
-    }
-
-    /// 探测 3080 端口上是否为 dsh（响应体含 __DSH_BOOT__ 才算）。
-    private func checkForExistingInstance(completion: @escaping (Bool) -> Void) {
-        guard let probe = URL(string: "http://127.0.0.1:3080/") else {
-            completion(false); return
-        }
-        var request = URLRequest(url: probe)
-        request.timeoutInterval = 1.5
-        URLSession.shared.dataTask(with: request) { data, response, _ in
-            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-            let body = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
-            let ok = status == 200 && body.contains("__DSH_BOOT__")
-            DispatchQueue.main.async { completion(ok) }
-        }.resume()
-    }
-
-    private func spawnBackend() {
-        let resources = Bundle.main.resourceURL!
-        let node = resources.appendingPathComponent("node/node")
-        let bin = resources
-            .appendingPathComponent("backend/node_modules/@deepseek-ai/dsh/lib/bin.js")
-
-        guard FileManager.default.fileExists(atPath: node.path) else {
-            errorText = "缺少内置 Node 运行时：\(node.path)"
-            return
-        }
-        guard FileManager.default.fileExists(atPath: bin.path) else {
-            errorText = "缺少内置 dsh 后端：\(bin.path)"
-            return
-        }
-        try? FileManager.default.createDirectory(atPath: homePath, withIntermediateDirectories: true)
-
-        let proc = Process()
-        proc.executableURL = node
-        proc.arguments = ["--expose-internals", bin.path, "web", "--no-open", "--port", "0"]
-        var env = ProcessInfo.processInfo.environment
-        env["DSH_HOME"] = homePath
-        proc.environment = env
-
-        let pipe = Pipe()
-        proc.standardOutput = pipe
-        proc.standardError = pipe
-
-        pipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            if data.isEmpty { return }
-            let text = String(decoding: data, as: UTF8.self)
-            DispatchQueue.main.async {
-                self?.handleOutput(text)
-            }
-        }
-
-        proc.terminationHandler = { [weak self] p in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                self.process = nil
-                if self.isQuitting { return }
-                if self.suppressNextExit { self.suppressNextExit = false; return }
-                if self.restartCount < 1 {
-                    self.restartCount += 1
-                    self.url = nil
-                    self.appendLog("[backend] 后端退出（code=\(p.terminationStatus)），0.6 秒后自动重启（1/1）\n")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
-                        self?.start(autoRestart: true)
-                    }
-                } else {
-                    self.url = nil
-                    self.errorText = "后端连续两次退出（code=\(p.terminationStatus)）。"
-                        + "请点「重新启动」，或运行 glass/repair-backend.sh 重装后端。日志：\(self.logPath)"
-                }
-            }
-        }
-
-        ownsBackend = true
-        do {
-            try proc.run()
-            process = proc
-        } catch {
-            errorText = "无法启动后端：\(error.localizedDescription)"
-        }
-    }
-
-    private func handleOutput(_ text: String) {
-        appendLog(text)
-        captured += text
-        if url == nil,
-           let range = captured.range(
-               of: #"dsh web:\s+(https?://127\.0\.0\.1(?::\d+)?/?\S*)"#,
-               options: .regularExpression
-           ) {
-            let match = String(captured[range])
-            if let u = match.split(separator: " ").last.map(String.init),
-               let parsed = URL(string: u) {
-                url = parsed
-            }
-        }
-    }
-}
 
 // MARK: - 动态反色文字（苹果式自适应：按窗口背后壁纸亮度取反色）
 
@@ -408,42 +224,6 @@ final class GlassWebViewController: NSViewController, WKNavigationDelegate, WKDo
                 s.textContent = `\(css)`
                 document.documentElement.appendChild(s)
               }
-              // 层级磨砂：给所有带可见背景的元素叠加 backdrop-filter。
-              // （网页无法采样原生玻璃，但能真实模糊其下的页面内容——弹窗、
-              // 菜单、输入框下方的文字会被高斯打散，形成第二层磨砂观感。）
-              function dshGlassAlpha(el) {
-                try {
-                  var bg = getComputedStyle(el).backgroundColor || ''
-                  if (bg === 'transparent') return 0
-                  if (bg.indexOf('rgba') !== 0) return 1
-                  var inner = bg.substring(bg.indexOf('(') + 1, bg.lastIndexOf(')'))
-                  var parts = inner.split(',')
-                  return parts.length > 3 ? parseFloat(parts[3]) : 1
-                } catch (e) { return 0 }
-              }
-              function dshGlassSweep(root) {
-                if (!root || !root.querySelectorAll) return
-                var els = root.querySelectorAll('div,section,aside,form,span,button,input,textarea,ul,li,nav')
-                for (var i = 0; i < els.length; i++) {
-                  var el = els[i]
-                  if (el.getAttribute('data-dsh-blur')) continue
-                  if (dshGlassAlpha(el) > 0.05) {
-                    el.setAttribute('data-dsh-blur', '1')
-                    el.style.backdropFilter = 'blur(18px) saturate(1.4)'
-                    el.style.webkitBackdropFilter = 'blur(18px) saturate(1.4)'
-                  }
-                }
-              }
-              dshGlassSweep(document.body)
-              var dshMo = new MutationObserver(function (muts) {
-                for (var i = 0; i < muts.length; i++) {
-                  var added = muts[i].addedNodes
-                  for (var j = 0; j < added.length; j++) {
-                    if (added[j].nodeType === 1) dshGlassSweep(added[j])
-                  }
-                }
-              })
-              dshMo.observe(document.body, { childList: true, subtree: true })
             })()
             """,
             injectionTime: .atDocumentEnd,
@@ -601,7 +381,12 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 40)
-                    Button("重新启动") { backend.start() }
+                    TextField("已有 dsh web 的完整本地启动链接", text: $backend.connectionURL)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 560)
+                    Button("连接已有服务") { backend.connect(backend.connectionURL) }
+                        .disabled(backend.connectionURL.isEmpty)
+                    Button("重试") { backend.start() }
                         .controlSize(.large)
                 }
                 .padding(40)
@@ -633,6 +418,7 @@ final class ZeroSafeAreaHostingView<Content: View>: NSHostingView<Content> {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var window: NSWindow!
     private var statusItem: NSStatusItem!
+    private var signalSources: [DispatchSourceSignal] = []
 
     static func main() {
         let app = NSApplication.shared
@@ -640,6 +426,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         app.delegate = delegate
         app.setActivationPolicy(.regular)
         app.run()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        BackendController.shared.shutdown()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -878,13 +668,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     /// 被 kill/SIGINT 时也走优雅退出：先杀掉 dsh 子进程，不留孤儿。
     private func installSignalHandlers() {
-        signal(SIGTERM) { _ in
-            BackendController.shared.shutdown()
-            exit(0)
-        }
-        signal(SIGINT) { _ in
-            BackendController.shared.shutdown()
-            exit(0)
+        for code in [SIGTERM, SIGINT] {
+            signal(code, SIG_IGN)
+            let source = DispatchSource.makeSignalSource(signal: code, queue: .main)
+            source.setEventHandler { NSApplication.shared.terminate(nil) }
+            source.resume()
+            signalSources.append(source)
         }
     }
 
