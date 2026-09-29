@@ -2,7 +2,17 @@
 
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Release names use `glass-<compatible dsh version>`.
+
+## [glass-0.1.7-rc.2] - 2026-09-29
+
+- Adapt to dsh 0.1.7-rc.2 with a frontend-only native macOS shell.
+- Reuse local dsh services or silently launch the separately installed CLI.
+- Support authenticated startup URLs, persistent WebKit sessions and token-redacted logs.
+- Remove bundled Node.js, backend packages and backend repair tooling.
+- Preserve native menus, keyboard shortcuts and Finder download reveal.
+- Restore input and dialog background contrast; remove global nested blur.
+- Verify connection and child-process lifecycle with isolated smoke tests.
 
 ## [0.4.0] - 2026-08-15
 

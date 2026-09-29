@@ -74,3 +74,5 @@ Glass 不读取或伪造 dsh 凭据。
 
 这是独立、非官方的封装，与 DeepSeek 无隶属或背书关系。
 采用 MIT 许可，详见 [LICENSE](LICENSE) 和 [第三方声明](THIRD_PARTY_NOTICES.md)。
+
+发布标签统一为 `glass-<dsh 版本号>`，当前为 `glass-0.1.7-rc.2`。

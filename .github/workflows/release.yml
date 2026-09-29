@@ -3,7 +3,7 @@ name: release
 on:
   push:
     tags:
-      - "v*"
+      - "glass-*"
   workflow_dispatch:
 
 permissions:
@@ -40,9 +40,24 @@ jobs:
             -ov -format UDZO "DeepSeek Harness Glass-${GITHUB_REF_NAME}.dmg"
           rm -rf dmg-stage
 
+      # A locally verified release may already contain the canonical DMG.
+      # Never overwrite its assets with another build of the same tag.
+      - name: Check existing release
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/glass-') && steps.existing.outputs.exists != 'true'
         uses: softprops/action-gh-release@v2
         with:
           files: "DeepSeek Harness Glass-*.dmg"
           draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc.') || contains(github.ref_name, '-alpha.') || contains(github.ref_name, '-beta.') }}
           generate_release_notes: true

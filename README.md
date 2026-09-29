@@ -89,3 +89,5 @@ build/icon.icns                         app icon
 
 This is an independent, unofficial wrapper, not affiliated with or endorsed by
 DeepSeek. MIT; see [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Release tags use `glass-<dsh version>`, currently `glass-0.1.7-rc.2`.
