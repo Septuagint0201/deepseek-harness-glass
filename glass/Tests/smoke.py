@@ -2,6 +2,7 @@
 """macOS connection/lifecycle tests; real dsh uses an isolated DSH_HOME."""
 import http.server
 import os
+import plistlib
 from pathlib import Path
 import socket
 import subprocess
@@ -82,6 +83,11 @@ while True: time.sleep(1)
     else:
         raise AssertionError('Owned dsh survived shutdown')
     if os.environ.get('GLASS_TEST_REAL_DSH') == '1':
+        expected = plistlib.loads((ROOT/'Info.plist').read_bytes())['DSHCompatibleVersion']
+        cli = os.environ.get('DSH_EXECUTABLE', 'dsh')
+        actual = subprocess.check_output([cli, '--version'], text=True).strip()
+        assert actual == expected, f'Real dsh version {actual} does not match supported version {expected}'
+        print(f'Testing installed dsh {actual}', flush=True)
         port = free_port()
         run('real', port)
         with socket.socket() as sock:

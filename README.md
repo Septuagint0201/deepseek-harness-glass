@@ -2,8 +2,7 @@
 
 A native macOS Liquid Glass window for the locally installed
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) web UI.
-This fork continues the native menus and keyboard shortcuts from PR #1 on a
-separate branch. It targets **dsh 0.1.7-rc.2** and distributes only the Swift
+This fork continues the native menus and keyboard shortcuts from PR #1. It targets **dsh 0.2.0-rc.2** and distributes only the Swift
 frontend shell: no Node.js, dsh engine, npm packages, or copied web frontend.
 
 [中文说明](README.zh.md)
@@ -12,7 +11,7 @@ frontend shell: no Node.js, dsh engine, npm packages, or copied web frontend.
 
 - macOS 26 or later, Apple Silicon.
 - A separately installed dsh and its required Node.js runtime. For the tested
-  version: `npm install -g @deepseek-ai/dsh@0.1.7-rc.2`.
+  version: `npm install -g @deepseek-ai/dsh@0.2.0-rc.2`.
 - Confirm `dsh --version` and `dsh web --no-open` work in your terminal.
 
 The app uses `DSH_HOME` when set, otherwise `~/.dsh`. Data, credentials,
@@ -23,7 +22,7 @@ The shell does not install or upgrade dsh.
 
 1. Probe `http://127.0.0.1:3080/`, or the last successfully connected local
    endpoint. `DSH_WEB_URL` overrides that address, including a custom port.
-2. Reuse a verified dsh service. dsh 0.1.7-rc.2 requires the authenticated
+2. Reuse a verified dsh service. dsh 0.2.0-rc.2 requires the authenticated
    startup URL on first connection. Paste the full URL printed by `dsh web`
    into the connection screen, or provide it in `DSH_WEB_URL`. WebKit keeps
    the session cookie; the shell saves only the address without the token.
@@ -90,4 +89,4 @@ build/icon.icns                         app icon
 This is an independent, unofficial wrapper, not affiliated with or endorsed by
 DeepSeek. MIT; see [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Release tags use `glass-<dsh version>`, currently `glass-0.1.7-rc.2`.
+Release tags use `glass-<dsh version>`, currently `glass-0.2.0-rc.2`.

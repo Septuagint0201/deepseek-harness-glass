@@ -161,7 +161,7 @@ final class BackendController: NSObject, ObservableObject {
                     self.restartCount += 1
                     self.start(autoRestart: true)
                 } else {
-                    self.errorText = "dsh 启动失败或退出（\(child.terminationStatus)）。请确认已安装 dsh 0.1.7-rc.2，且终端能运行 dsh web --no-open。日志：\(self.logPath)"
+                    self.errorText = "dsh 启动失败或退出（\(child.terminationStatus)）。请确认已安装 dsh 0.2.0-rc.2，且终端能运行 dsh web --no-open。日志：\(self.logPath)"
                 }
             }
         }
