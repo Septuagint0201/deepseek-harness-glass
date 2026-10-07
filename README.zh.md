@@ -7,6 +7,10 @@ npm 包或单独复制的 Web 前端。
 
 ## 环境要求
 
+从 [GitHub Releases](https://github.com/Septuagint0201/deepseek-harness-glass/releases)
+或 [GitLab Releases](https://gitlab.com/Septuagintks/deepseek-harness-glass/-/releases)
+下载 DMG，将应用拖入 Applications。
+
 - macOS 26 及以上、Apple Silicon。
 - 单独安装 dsh 及其要求的 Node.js。测试版本安装命令：
   `npm install -g @deepseek-ai/dsh@0.2.0-rc.2`。
@@ -43,17 +47,20 @@ Glass 不安装或升级后端。
 
 ## 构建与验证
 
-需要支持 macOS 26 SDK 的 Xcode Command Line Tools。构建无需 npm 或后端下载。
+需要支持 macOS 26 SDK 的 Xcode Command Line Tools。构建无需 npm 或后端下载；测试需要 Python 3。
 
 ```sh
 APP_PATH="$PWD/glass/dist/DeepSeek Harness.app" glass/assemble.sh
 python3 glass/Tests/smoke.py
+python3 glass/Tests/install.py
 # 用独立临时 DSH_HOME 验证本机实际 dsh：
 GLASS_TEST_REAL_DSH=1 python3 glass/Tests/smoke.py
 ```
 
 不设置 `APP_PATH` 时默认安装到 `/Applications/DeepSeek Harness.app`。
-应用使用 ad-hoc 签名，未公证。发布 CI 仅编译此前端封装并打包为 DMG。
+应用使用 ad-hoc 签名，未公证。发布 CI 编译此前端封装并打包为 DMG，附 SHA-256 校验文件。
+`main` 推送与 PR 会运行构建、连接、真实 WebKit 下载和原子安装测试。
+安装前验证暂存应用的签名，再通过原子目录交换替换已有应用；失败时保留旧应用。
 
 ## 排错
 
@@ -65,8 +72,9 @@ Glass 不读取或伪造 dsh 凭据。
 
 - `glass/Sources/main.swift`：原生窗口、菜单、WebKit 与 CSS。
 - `glass/Sources/BackendController.swift`：本地服务连接和进程管理。
-- `glass/Tests/`：连接与生命周期测试。
-- `glass/assemble.sh`：编译与签名前端应用。
+- `glass/Tests/`：连接、下载与安装测试。
+- `glass/assemble.sh`：编译、验证签名与原子安装前端应用。
+- `glass/Tools/AtomicInstall.swift`：macOS 原子目录交换工具。
 - `glass/Info.plist`：应用元数据。
 - `build/icon.icns`：应用图标。
 

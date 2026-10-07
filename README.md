@@ -2,12 +2,17 @@
 
 A native macOS Liquid Glass window for the locally installed
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) web UI.
-This fork continues the native menus and keyboard shortcuts from PR #1. It targets **dsh 0.2.0-rc.2** and distributes only the Swift
+This fork continues the native menus and keyboard shortcuts from PR #1.
+It targets **dsh 0.2.0-rc.2** and distributes only the Swift
 frontend shell: no Node.js, dsh engine, npm packages, or copied web frontend.
 
 [中文说明](README.zh.md)
 
 ## Requirements and installation
+
+Download the DMG from [GitHub Releases](https://github.com/Septuagint0201/deepseek-harness-glass/releases)
+or [GitLab Releases](https://gitlab.com/Septuagintks/deepseek-harness-glass/-/releases)
+and drag the app into Applications.
 
 - macOS 26 or later, Apple Silicon.
 - A separately installed dsh and its required Node.js runtime. For the tested
@@ -51,19 +56,23 @@ will show a connection message rather than start a duplicate service.
 
 ## Building and testing
 
-Install Xcode Command Line Tools with the macOS 26 SDK. No npm dependencies or
+Install Xcode Command Line Tools with the macOS 26 SDK; tests also require Python 3. No npm dependencies or
 backend downloads are needed to build the app.
 
 ```sh
 APP_PATH="$PWD/glass/dist/DeepSeek Harness.app" glass/assemble.sh
 python3 glass/Tests/smoke.py
+python3 glass/Tests/install.py
 # Also exercise your installed dsh using a temporary, isolated DSH_HOME:
 GLASS_TEST_REAL_DSH=1 python3 glass/Tests/smoke.py
 ```
 
 Without `APP_PATH`, assembly installs in `/Applications/DeepSeek Harness.app`.
 The app is ad-hoc signed, not notarized. Release CI builds the same frontend-only
-bundle and packages it as a DMG.
+bundle and packages it as a DMG with a SHA-256 checksum. Main pushes and pull
+requests run build, connection, real WebKit download and atomic installer checks.
+Assembly verifies the staged app before atomically replacing the installed bundle;
+an installation failure keeps the previous app available.
 
 ## Troubleshooting
 
@@ -78,8 +87,9 @@ The shell does not read or synthesize dsh credentials.
 ```
 glass/Sources/main.swift                native window, menus, WebKit, CSS
 glass/Sources/BackendController.swift   local connection and process lifecycle
-glass/Tests/                           connection and lifecycle smoke tests
-glass/assemble.sh                      compile and sign the frontend-only app
+glass/Tests/                           connection, download and installer tests
+glass/assemble.sh                      compile, verify and atomically install
+glass/Tools/AtomicInstall.swift         macOS directory exchange helper
 glass/Info.plist                        bundle metadata
 build/icon.icns                         app icon
 ```

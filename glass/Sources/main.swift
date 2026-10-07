@@ -211,8 +211,21 @@ final class GlassWebViewController: NSViewController, WKNavigationDelegate, WKDo
     private var loaded = false
     private var contrastObserver: NSObjectProtocol?
     private var refreshObserver: NSObjectProtocol?
+    private let downloadsDirectory: URL
+    private let revealDownloadedFile: (URL) -> Void
+    private var downloadDestinations: [ObjectIdentifier: URL] = [:]
 
-    init(url: URL) {
+    init(
+        url: URL,
+        downloadsDirectory: URL? = nil,
+        revealDownloadedFile: @escaping (URL) -> Void = {
+            NSWorkspace.shared.activateFileViewerSelecting([$0])
+        }
+    ) {
+        self.downloadsDirectory = downloadsDirectory
+            ?? FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        self.revealDownloadedFile = revealDownloadedFile
         let config = WKWebViewConfiguration()
         let css = GLASS_CSS
         let script = WKUserScript(
@@ -271,14 +284,34 @@ final class GlassWebViewController: NSViewController, WKNavigationDelegate, WKDo
 
     func webView(
         _ webView: WKWebView,
+        decidePolicyFor navigationAction: WKNavigationAction,
+        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+    ) {
+        decisionHandler(navigationAction.shouldPerformDownload ? .download : .allow)
+    }
+
+    func webView(
+        _ webView: WKWebView,
         decidePolicyFor navigationResponse: WKNavigationResponse,
         decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void
     ) {
-        if navigationResponse.canShowMIMEType {
+        let disposition = (navigationResponse.response as? HTTPURLResponse)?
+            .value(forHTTPHeaderField: "Content-Disposition") ?? ""
+        let isAttachment = disposition.split(separator: ";").first?
+            .trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "attachment"
+        if navigationResponse.canShowMIMEType && !isAttachment {
             decisionHandler(.allow)
         } else {
             decisionHandler(.download)
         }
+    }
+
+    func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
+        download.delegate = self
+    }
+
+    func webView(_ webView: WKWebView, navigationResponse: WKNavigationResponse, didBecome download: WKDownload) {
+        download.delegate = self
     }
 
     func download(
@@ -287,31 +320,32 @@ final class GlassWebViewController: NSViewController, WKNavigationDelegate, WKDo
         suggestedFilename: String,
         completionHandler: @escaping (URL?) -> Void
     ) {
-        let dir = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
-        var dest = dir.appendingPathComponent(suggestedFilename)
+        let name = (suggestedFilename as NSString).lastPathComponent
+        let filename = name.isEmpty || name == "." || name == ".." ? "download" : name
+        var dest = downloadsDirectory.appendingPathComponent(filename)
         // 同名文件自动加序号，避免覆盖
         var counter = 2
-        while FileManager.default.fileExists(atPath: dest.path) {
-            let base = (suggestedFilename as NSString).deletingPathExtension
-            let ext = (suggestedFilename as NSString).pathExtension
-            dest = dir.appendingPathComponent(
+        while FileManager.default.fileExists(atPath: dest.path) || downloadDestinations.values.contains(dest) {
+            let base = (filename as NSString).deletingPathExtension
+            let ext = (filename as NSString).pathExtension
+            dest = downloadsDirectory.appendingPathComponent(
                 ext.isEmpty ? "\(base)-\(counter)" : "\(base)-\(counter).\(ext)")
             counter += 1
         }
+        downloadDestinations[ObjectIdentifier(download)] = dest
         completionHandler(dest)
     }
 
     func downloadDidFinish(_ download: WKDownload) {
-        let name = download.originalRequest?.url?.lastPathComponent ?? "file"
+        let path = downloadDestinations.removeValue(forKey: ObjectIdentifier(download))
+        let name = path?.lastPathComponent ?? "file"
         appendLog("[download] 完成：\(name)\n")
         // 在访达中高亮刚下载的文件
-        if let path = download.progress.fileURL {
-            NSWorkspace.shared.activateFileViewerSelecting([path])
-        }
+        if let path { revealDownloadedFile(path) }
     }
 
     func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
+        downloadDestinations.removeValue(forKey: ObjectIdentifier(download))
         appendLog("[download] 失败：\(error.localizedDescription)\n")
     }
 
@@ -414,7 +448,9 @@ final class ZeroSafeAreaHostingView<Content: View>: NSHostingView<Content> {
 // MARK: - App 入口（AppKit 手工建窗：styleMask 从一开始就带 fullSizeContentView，
 //         确保内容+玻璃顶到窗口最顶端，覆盖标题栏拖动条）
 
+#if !GLASS_TESTING
 @main
+#endif
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var window: NSWindow!
     private var statusItem: NSStatusItem!

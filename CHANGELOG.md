@@ -4,9 +4,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Release names use `glass-<compatible dsh version>`.
 
-## [glass-0.2.0-rc.2] - 2026-10-03
+## [glass-0.2.0-rc.2] - 2026-10-07
 
 - Update the supported npm `latest` version to dsh 0.2.0-rc.2.
+- Fix WebKit download delegates, download links, attachment responses and Finder reveal.
+- Preserve existing files and reserve distinct destinations for concurrent downloads.
+- Install verified app bundles with atomic directory exchange; preserve the old app on failure.
+- Run build, connection, download and installer checks on main pushes and pull requests.
+- Publish frontend-only DMGs with SHA-256 checksums.
 - Verify the installed CLI's authenticated web startup and process lifecycle.
 - Retain distinct input and modal surfaces with the 0.2.0-rc.2 frontend.
 

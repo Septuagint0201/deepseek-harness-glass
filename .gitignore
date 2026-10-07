@@ -1,5 +1,6 @@
 .DS_Store
 *.log
+__pycache__/
 
 # Build inputs/outputs (not tracked; see README for how to produce them)
 glass/build/

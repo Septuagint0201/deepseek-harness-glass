@@ -25,6 +25,20 @@ with tempfile.TemporaryDirectory(prefix='glass-smoke-') as directory:
                     str(ROOT/'Tests/ConnectionSmoke.swift'), '-o', str(binary)], check=True)
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
+            if self.path == '/page':
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html')
+                self.end_headers()
+                self.wfile.write(b'<a id="download" href="/plain" download="fixture.txt">Download</a>')
+                return
+            if self.path in ('/attachment', '/binary/fixture.txt', '/plain'):
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/octet-stream' if self.path == '/binary/fixture.txt' else 'text/plain')
+                if self.path == '/attachment':
+                    self.send_header('Content-Disposition', 'attachment; filename="fixture.txt"')
+                self.end_headers()
+                self.wfile.write(b'glass-download-fixture\n')
+                return
             authorized = self.path == '/?token=fixture'
             self.send_response(200 if authorized else 401)
             self.end_headers()
@@ -40,6 +54,15 @@ with tempfile.TemporaryDirectory(prefix='glass-smoke-') as directory:
             env['DSH_EXECUTABLE'] = str(executable)
         subprocess.run([str(binary), mode, *extra], env=env, check=True, timeout=90)
     try:
+        download_binary = tmp/'download-smoke'
+        subprocess.run(['swiftc', '-DGLASS_TESTING', '-parse-as-library',
+                        *map(str, sorted((ROOT/'Sources').glob('*.swift'))),
+                        str(ROOT/'Tests/DownloadSmoke.swift'), '-o', str(download_binary)], check=True)
+        for mode, route in [('action', '/page'), ('attachment', '/attachment'), ('binary', '/binary/fixture.txt')]:
+            downloads = tmp/('downloads-' + mode)
+            downloads.mkdir()
+            subprocess.run([str(download_binary), f'http://127.0.0.1:{server.server_port}{route}', mode,
+                            str(downloads)], check=True, timeout=30)
         run('unauthorized', server.server_port)
         run('connect', server.server_port, extra=(f'http://127.0.0.1:{server.server_port}/?token=fixture',))
         # An external process must still answer after controller shutdown.
