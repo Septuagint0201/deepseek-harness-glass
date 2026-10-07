@@ -452,6 +452,7 @@ final class ZeroSafeAreaHostingView<Content: View>: NSHostingView<Content> {
 @main
 #endif
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+    private static let frameAutosaveName = "GlassMainWindow"
     private var window: NSWindow!
     private var statusItem: NSStatusItem!
     private var signalSources: [DispatchSourceSignal] = []
@@ -487,6 +488,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             .frame(minWidth: 880, minHeight: 600)
 
         let hosting = ZeroSafeAreaHostingView(rootView: content)
+        // The native window owns its size; SwiftUI's intrinsic size must not shrink
+        // a restored frame to the content's minimum during the first layout.
+        hosting.sizingOptions = []
         window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1280, height: 840),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -502,7 +506,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.contentMinSize = NSSize(width: 880, height: 600)
         window.contentView = hosting
         window.delegate = self
-        window.center()
+        // AppKit persists moves/resizes and adjusts restored frames for the current screens.
+        if !window.setFrameUsingName(Self.frameAutosaveName) {
+            window.center()
+        }
+        window.setFrameAutosaveName(Self.frameAutosaveName)
         window.makeKeyAndOrderFront(nil)
 
         // 几何诊断：窗口各层边界写进日志，用于定位顶部"玻璃差一截"的问题。

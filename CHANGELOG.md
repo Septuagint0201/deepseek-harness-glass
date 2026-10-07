@@ -10,6 +10,7 @@ Release names use `glass-<compatible dsh version>`.
 - Fix WebKit download delegates, download links, attachment responses and Finder reveal.
 - Preserve existing files and reserve distinct destinations for concurrent downloads.
 - Install verified app bundles with atomic directory exchange; preserve the old app on failure.
+- Remember window position and size across app launches using AppKit frame autosave.
 - Run build, connection, download and installer checks on main pushes and pull requests.
 - Publish frontend-only DMGs with SHA-256 checksums.
 - Verify the installed CLI's authenticated web startup and process lifecycle.

@@ -73,6 +73,7 @@ bundle and packages it as a DMG with a SHA-256 checksum. Main pushes and pull
 requests run build, connection, real WebKit download and atomic installer checks.
 Assembly verifies the staged app before atomically replacing the installed bundle;
 an installation failure keeps the previous app available.
+Window position and size are remembered between app launches.
 
 ## Troubleshooting
 
