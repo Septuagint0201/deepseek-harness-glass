@@ -14,8 +14,20 @@ permissions:
 jobs:
   build-macos:
     runs-on: macos-latest
+    outputs:
+      prerelease: ${{ steps.release-metadata.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v7.0.1
+
+      - name: Read release metadata
+        id: release-metadata
+        if: startsWith(github.ref, 'refs/tags/glass-')
+        run: |
+          test "$(/usr/libexec/PlistBuddy -c 'Print :GlassReleaseVersion' glass/Info.plist)" = "$GITHUB_REF_NAME"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :DSHCompatibleVersion' glass/Info.plist)" = "${GITHUB_REF_NAME#glass-}"
+          PRERELEASE=$(/usr/libexec/PlistBuddy -c 'Print :GlassPrerelease' glass/Info.plist)
+          case "$PRERELEASE" in true|false) ;; *) exit 1 ;; esac
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
 
       - name: Test connection, downloads and process lifecycle
         run: python3 glass/Tests/smoke.py
@@ -56,9 +68,28 @@ jobs:
           path: release-assets/
           if-no-files-found: error
 
+  real-dsh:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dsh: ["0.2.0-rc.2", "0.2.1-alpha.4"]
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: Install test CLI
+        run: npm install --global "@deepseek-ai/dsh@${{ matrix.dsh }}"
+      - name: Test real authentication, WebKit frontend and shutdown
+        env:
+          GLASS_TEST_REAL_DSH: "1"
+          GLASS_TEST_DSH_VERSION: ${{ matrix.dsh }}
+        run: python3 glass/Tests/smoke.py
+
   publish:
     if: startsWith(github.ref, 'refs/tags/glass-')
-    needs: build-macos
+    needs: [build-macos, real-dsh]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -87,5 +118,6 @@ jobs:
           files: release-assets/*
           fail_on_unmatched_files: true
           draft: false
-          prerelease: ${{ contains(github.ref_name, '-rc.') || contains(github.ref_name, '-alpha.') || contains(github.ref_name, '-beta.') }}
+          name: ${{ github.ref_name }}
+          prerelease: ${{ needs.build-macos.outputs.prerelease == 'true' }}
           generate_release_notes: true

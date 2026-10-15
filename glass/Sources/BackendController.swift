@@ -14,7 +14,13 @@ final class BackendController: NSObject, ObservableObject {
     private var generation = 0
     private var restartCount = 0
     private var isQuitting = false
+    private let websiteDataStore: WKWebsiteDataStore
     private(set) var ownsBackend = false
+
+    init(websiteDataStore: WKWebsiteDataStore = .default()) {
+        self.websiteDataStore = websiteDataStore
+        super.init()
+    }
 
     var homePath: String {
         ProcessInfo.processInfo.environment["DSH_HOME"] ?? NSHomeDirectory() + "/.dsh"
@@ -72,7 +78,7 @@ final class BackendController: NSObject, ObservableObject {
         let attempt = generation
         // WebKit has its own cookie store; Foundation must use those same cookies
         // to recognize a previously authorized external service after an app restart.
-        WKWebsiteDataStore.default().httpCookieStore.getAllCookies { [weak self] cookies in
+        websiteDataStore.httpCookieStore.getAllCookies { [weak self] cookies in
             guard let self, self.generation == attempt, !self.isQuitting else { return }
             let configuration = URLSessionConfiguration.ephemeral
             let session = URLSession(configuration: configuration)
@@ -161,7 +167,7 @@ final class BackendController: NSObject, ObservableObject {
                     self.restartCount += 1
                     self.start(autoRestart: true)
                 } else {
-                    self.errorText = "dsh 启动失败或退出（\(child.terminationStatus)）。请确认已安装 dsh 0.2.0-rc.2，且终端能运行 dsh web --no-open。日志：\(self.logPath)"
+                    self.errorText = "dsh 启动失败或退出（\(child.terminationStatus)）。请确认已安装 dsh，且终端能运行 dsh web --no-open。日志：\(self.logPath)"
                 }
             }
         }

@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Release names use `glass-<compatible dsh version>`.
 
+## [glass-0.2.1-alpha.4] - 2026-10-15
+
+- Target the opt-in dsh 0.2.1-alpha.4 prerelease; retain tested 0.2.0-rc.2 compatibility.
+- Hand account sign-in popups and new-window links to the default browser, including
+  dsh's asynchronous navigation from a preopened blank window.
+- Test popup handoff, cancellation and unsupported schemes without opening a real browser.
+- Verify actual WebKit frontend rendering, light/dark Glass overrides and token-free
+  cookie reconnects with both supported CLIs in CI; gate publication on those checks.
+- Isolate WebKit test cookies in memory and keep real CLI data in temporary homes.
+- Remove the stale hard-coded CLI version from startup failure messages.
+- Update bundle metadata and bilingual installation and compatibility documentation.
+- Classify releases using explicit npm-channel metadata rather than version suffixes;
+  npm latest builds remain regular releases even when their version includes `-rc`.
+
 ## [glass-0.2.0-rc.2] - 2026-10-07
 
 - Update the supported npm `latest` version to dsh 0.2.0-rc.2.

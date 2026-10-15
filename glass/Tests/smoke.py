@@ -21,7 +21,8 @@ def free_port():
 with tempfile.TemporaryDirectory(prefix='glass-smoke-') as directory:
     tmp = Path(directory)
     binary = tmp / 'connection-smoke'
-    subprocess.run(['swiftc', '-parse-as-library', str(ROOT/'Sources/BackendController.swift'),
+    subprocess.run(['swiftc', '-DGLASS_TESTING', '-parse-as-library',
+                    *map(str, sorted((ROOT/'Sources').glob('*.swift'))),
                     str(ROOT/'Tests/ConnectionSmoke.swift'), '-o', str(binary)], check=True)
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
@@ -63,6 +64,12 @@ with tempfile.TemporaryDirectory(prefix='glass-smoke-') as directory:
             downloads.mkdir()
             subprocess.run([str(download_binary), f'http://127.0.0.1:{server.server_port}{route}', mode,
                             str(downloads)], check=True, timeout=30)
+        browser_binary = tmp/'browser-smoke'
+        subprocess.run(['swiftc', '-DGLASS_TESTING', '-parse-as-library',
+                        *map(str, sorted((ROOT/'Sources').glob('*.swift'))),
+                        str(ROOT/'Tests/BrowserSmoke.swift'), '-o', str(browser_binary)], check=True)
+        subprocess.run([str(browser_binary), f'http://127.0.0.1:{server.server_port}/page'],
+                       check=True, timeout=45)
         run('unauthorized', server.server_port)
         run('connect', server.server_port, extra=(f'http://127.0.0.1:{server.server_port}/?token=fixture',))
         # An external process must still answer after controller shutdown.
@@ -106,7 +113,7 @@ while True: time.sleep(1)
     else:
         raise AssertionError('Owned dsh survived shutdown')
     if os.environ.get('GLASS_TEST_REAL_DSH') == '1':
-        expected = plistlib.loads((ROOT/'Info.plist').read_bytes())['DSHCompatibleVersion']
+        expected = os.environ.get('GLASS_TEST_DSH_VERSION') or plistlib.loads((ROOT/'Info.plist').read_bytes())['DSHCompatibleVersion']
         cli = os.environ.get('DSH_EXECUTABLE', 'dsh')
         actual = subprocess.check_output([cli, '--version'], text=True).strip()
         assert actual == expected, f'Real dsh version {actual} does not match supported version {expected}'

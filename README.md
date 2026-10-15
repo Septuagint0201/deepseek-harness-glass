@@ -3,8 +3,11 @@
 A native macOS Liquid Glass window for the locally installed
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) web UI.
 This fork continues the native menus and keyboard shortcuts from PR #1.
-It targets **dsh 0.2.0-rc.2** and distributes only the Swift
+It targets **dsh 0.2.1-alpha.4** and distributes only the Swift
 frontend shell: no Node.js, dsh engine, npm packages, or copied web frontend.
+
+0.2.1-alpha.4 is an opt-in prerelease on npm's `alpha` channel; `latest` remains
+0.2.0-rc.2. Both versions are covered by real CLI and WebKit compatibility tests.
 
 [中文说明](README.zh.md)
 
@@ -16,7 +19,7 @@ and drag the app into Applications.
 
 - macOS 26 or later, Apple Silicon.
 - A separately installed dsh and its required Node.js runtime. For the tested
-  version: `npm install -g @deepseek-ai/dsh@0.2.0-rc.2`.
+  version: `npm install -g @deepseek-ai/dsh@0.2.1-alpha.4`.
 - Confirm `dsh --version` and `dsh web --no-open` work in your terminal.
 
 The app uses `DSH_HOME` when set, otherwise `~/.dsh`. Data, credentials,
@@ -27,7 +30,7 @@ The shell does not install or upgrade dsh.
 
 1. Probe `http://127.0.0.1:3080/`, or the last successfully connected local
    endpoint. `DSH_WEB_URL` overrides that address, including a custom port.
-2. Reuse a verified dsh service. dsh 0.2.0-rc.2 requires the authenticated
+2. Reuse a verified dsh service. dsh 0.2.1-alpha.4 requires the authenticated
    startup URL on first connection. Paste the full URL printed by `dsh web`
    into the connection screen, or provide it in `DSH_WEB_URL`. WebKit keeps
    the session cookie; the shell saves only the address without the token.
@@ -51,6 +54,8 @@ will show a connection message rather than start a duplicate service.
 
 - Native Liquid Glass window with transparent `WKWebView` and CSS token overrides.
 - Native menus, keyboard shortcuts, reload, browser handoff, and menu-bar residency.
+- Account sign-in popups and new-window links open in the default browser,
+  including the asynchronous authorization handoff used by dsh 0.2.1.
 - Downloads with Finder reveal, shared CLI state, and layered translucent surfaces.
 - Token-redacted startup logs at `~/Library/Logs/DeepSeek Harness Glass.log`.
 
@@ -65,6 +70,8 @@ python3 glass/Tests/smoke.py
 python3 glass/Tests/install.py
 # Also exercise your installed dsh using a temporary, isolated DSH_HOME:
 GLASS_TEST_REAL_DSH=1 python3 glass/Tests/smoke.py
+# Check the previous npm latest version when that CLI is installed:
+GLASS_TEST_REAL_DSH=1 GLASS_TEST_DSH_VERSION=0.2.0-rc.2 python3 glass/Tests/smoke.py
 ```
 
 Without `APP_PATH`, assembly installs in `/Applications/DeepSeek Harness.app`.
@@ -73,6 +80,9 @@ bundle and packages it as a DMG with a SHA-256 checksum. Main pushes and pull
 requests run build, connection, real WebKit download and atomic installer checks.
 Assembly verifies the staged app before atomically replacing the installed bundle;
 an installation failure keeps the previous app available.
+CI also tests both supported CLI versions in isolated homes, including actual
+WebKit rendering, light/dark Glass overrides, authentication-cookie reconnects,
+and owned-process shutdown. WebKit tests use in-memory cookie stores.
 Window position and size are remembered between app launches.
 
 ## Troubleshooting
@@ -100,4 +110,7 @@ build/icon.icns                         app icon
 This is an independent, unofficial wrapper, not affiliated with or endorsed by
 DeepSeek. MIT; see [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Release tags use `glass-<dsh version>`, currently `glass-0.2.0-rc.2`.
+Release tags use `glass-<dsh version>`, currently `glass-0.2.1-alpha.4`.
+Release status follows the npm channel at adaptation time, recorded as
+`GlassPrerelease` in `glass/Info.plist`: npm `latest` builds are regular releases,
+and opt-in alpha builds are prereleases, even when a `latest` version contains `-rc`.

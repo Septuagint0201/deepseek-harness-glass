@@ -11,9 +11,10 @@ struct DownloadSmoke {
         let original = directory.appendingPathComponent("fixture.txt")
         try Data("keep-existing\n".utf8).write(to: original)
         var revealed: URL?
-        let controller = GlassWebViewController(url: url, downloadsDirectory: directory) {
+        let controller = GlassWebViewController(url: url, downloadsDirectory: directory,
+                                              websiteDataStore: .nonPersistent(), revealDownloadedFile: {
             revealed = $0
-        }
+        })
         let webView = controller.view as! WKWebView
         var clicked = false
         let deadline = Date().addingTimeInterval(20)

@@ -206,7 +206,7 @@ final class DynamicContrast {
 
 // MARK: - WKWebView（透明 + CSS 注入）
 
-final class GlassWebViewController: NSViewController, WKNavigationDelegate, WKDownloadDelegate {
+final class GlassWebViewController: NSViewController, WKNavigationDelegate, WKDownloadDelegate, WKUIDelegate {
     private let webView: WKWebView
     private var loaded = false
     private var contrastObserver: NSObjectProtocol?
@@ -214,10 +214,14 @@ final class GlassWebViewController: NSViewController, WKNavigationDelegate, WKDo
     private let downloadsDirectory: URL
     private let revealDownloadedFile: (URL) -> Void
     private var downloadDestinations: [ObjectIdentifier: URL] = [:]
+    private var browserPopups: [ObjectIdentifier: WKWebView] = [:]
+    private let openBrowser: (URL) -> Void
 
     init(
         url: URL,
         downloadsDirectory: URL? = nil,
+        websiteDataStore: WKWebsiteDataStore = .default(),
+        openBrowser: @escaping (URL) -> Void = { NSWorkspace.shared.open($0) },
         revealDownloadedFile: @escaping (URL) -> Void = {
             NSWorkspace.shared.activateFileViewerSelecting([$0])
         }
@@ -226,7 +230,9 @@ final class GlassWebViewController: NSViewController, WKNavigationDelegate, WKDo
             ?? FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         self.revealDownloadedFile = revealDownloadedFile
+        self.openBrowser = openBrowser
         let config = WKWebViewConfiguration()
+        config.websiteDataStore = websiteDataStore
         let css = GLASS_CSS
         let script = WKUserScript(
             source: """
@@ -247,6 +253,7 @@ final class GlassWebViewController: NSViewController, WKNavigationDelegate, WKDo
         super.init(nibName: nil, bundle: nil)
         webView.setValue(false, forKey: "drawsBackground")
         webView.navigationDelegate = self
+        webView.uiDelegate = self
         contrastObserver = NotificationCenter.default.addObserver(
             forName: DynamicContrast.didChange, object: nil, queue: .main
         ) { [weak self] _ in
@@ -287,7 +294,40 @@ final class GlassWebViewController: NSViewController, WKNavigationDelegate, WKDo
         decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
+        if browserPopups[ObjectIdentifier(webView)] != nil {
+            // dsh account login preopens about:blank, then assigns the authorization
+            // URL asynchronously. Keep its window handle alive until that handoff.
+            let url = navigationAction.request.url
+            if url?.absoluteString == "about:blank" {
+                decisionHandler(.allow)
+                return
+            }
+            if let url, ["http", "https"].contains(url.scheme?.lowercased() ?? "") {
+                openBrowser(url)
+            }
+            decisionHandler(.cancel)
+            browserPopups.removeValue(forKey: ObjectIdentifier(webView))
+            return
+        }
         decisionHandler(navigationAction.shouldPerformDownload ? .download : .allow)
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        createWebViewWith configuration: WKWebViewConfiguration,
+        for navigationAction: WKNavigationAction,
+        windowFeatures: WKWindowFeatures
+    ) -> WKWebView? {
+        guard navigationAction.targetFrame == nil else { return nil }
+        let popup = WKWebView(frame: .zero, configuration: configuration)
+        popup.navigationDelegate = self
+        popup.uiDelegate = self
+        browserPopups[ObjectIdentifier(popup)] = popup
+        return popup
+    }
+
+    func webViewDidClose(_ webView: WKWebView) {
+        browserPopups.removeValue(forKey: ObjectIdentifier(webView))
     }
 
     func webView(
