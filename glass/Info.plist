@@ -21,13 +21,13 @@
 	<key>CFBundleShortVersionString</key>
 	<string>0.2.1</string>
 	<key>CFBundleVersion</key>
-	<string>13</string>
+	<string>14</string>
 	<key>GlassReleaseVersion</key>
-	<string>glass-0.2.1-rc.2</string>
+	<string>glass-0.2.1-rc.3</string>
 	<key>GlassPrerelease</key>
 	<true/>
 	<key>DSHCompatibleVersion</key>
-	<string>0.2.1-rc.2</string>
+	<string>0.2.1-rc.3</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>26.0</string>
 	<key>NSHighResolutionCapable</key>

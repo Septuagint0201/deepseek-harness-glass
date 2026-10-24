@@ -2,11 +2,11 @@
 
 为本机安装的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 提供原生 macOS Liquid Glass 窗口。此分支保留 PR #1 的原生菜单与快捷键，独立继续开发，
-适配 **dsh 0.2.1-rc.2**。应用仅包含 Swift 前端封装，不携带 Node.js、dsh 后端、
+适配 **dsh 0.2.1-rc.3**。应用仅包含 Swift 前端封装，不携带 Node.js、dsh 后端、
 npm 包或单独复制的 Web 前端。
 
-0.2.1-rc.2 属于 npm `next` 渠道的候选版本，需要显式选择；`latest` 仍为
-0.2.0-rc.2。两者均通过真实 CLI 和 WebKit 兼容性测试。
+0.2.1-rc.3 属于 npm `next` 渠道的候选版本，需要显式选择；`latest` 仍为
+0.2.1-rc.2。两者均通过真实 CLI 和 WebKit 兼容性测试。
 
 ## 环境要求
 
@@ -16,7 +16,7 @@ npm 包或单独复制的 Web 前端。
 
 - macOS 26 及以上、Apple Silicon。
 - 单独安装 dsh 及其要求的 Node.js。测试版本安装命令：
-  `npm install -g @deepseek-ai/dsh@0.2.1-rc.2`。
+  `npm install -g @deepseek-ai/dsh@0.2.1-rc.3`。
 - 确认终端能执行 `dsh --version` 和 `dsh web --no-open`。
 
 应用沿用 `DSH_HOME`，默认 `~/.dsh`。数据、凭据、插件、迁移和升级由本机 dsh 管理；
@@ -26,7 +26,7 @@ Glass 不安装或升级后端。
 
 1. 优先探测 `http://127.0.0.1:3080/`，之后记住最近成功连接的地址。
    `DSH_WEB_URL` 可覆盖地址并指定自定义端口。
-2. 已有 dsh 服务时直接复用。0.2.1-rc.2 首次连接需要认证：在连接界面粘贴
+2. 已有 dsh 服务时直接复用。0.2.1-rc.3 首次连接需要认证：在连接界面粘贴
    `dsh web` 输出的完整链接（包含 token），或通过 `DSH_WEB_URL` 提供。
    WebKit 保存认证 cookie，Glass 仅持久保存去除 token 的地址。
 3. 只有连接被拒绝、没有服务监听时，才静默执行本机
@@ -59,8 +59,8 @@ python3 glass/Tests/smoke.py
 python3 glass/Tests/install.py
 # 用独立临时 DSH_HOME 验证本机实际 dsh：
 GLASS_TEST_REAL_DSH=1 python3 glass/Tests/smoke.py
-# 安装旧版 CLI 时检查 npm latest 兼容性：
-GLASS_TEST_REAL_DSH=1 GLASS_TEST_DSH_VERSION=0.2.0-rc.2 python3 glass/Tests/smoke.py
+# 安装 latest 基线 CLI 时检查兼容性：
+GLASS_TEST_REAL_DSH=1 GLASS_TEST_DSH_VERSION=0.2.1-rc.2 python3 glass/Tests/smoke.py
 ```
 
 不设置 `APP_PATH` 时默认安装到 `/Applications/DeepSeek Harness.app`。
@@ -92,6 +92,7 @@ Glass 不读取或伪造 dsh 凭据。
 这是独立、非官方的封装，与 DeepSeek 无隶属或背书关系。
 采用 MIT 许可，详见 [LICENSE](LICENSE) 和 [第三方声明](THIRD_PARTY_NOTICES.md)。
 
-发布标签统一为 `glass-<dsh 版本号>`，当前为 `glass-0.2.1-rc.2`。
-发布状态依据适配时的 npm 渠道，由 `glass/Info.plist` 中的 `GlassPrerelease` 记录：
-npm `latest` 对应正式 release，需显式选择的 alpha 或 next 渠道候选版本对应预发布；不单凭版本号中的 `-rc` 判断。
+发布标签统一为 `glass-<dsh 版本号>`，当前为 `glass-0.2.1-rc.3`。
+发布状态依据 npm 渠道：`latest` 对应正式 release，`next` 和 `alpha` 对应预发布，
+不单凭版本号后缀判断。`glass/Info.plist` 的 `GlassPrerelease` 控制初次发布状态；
+候选版本进入 npm `latest` 后，可将已有 release 提升为正式版并设为 Latest。
