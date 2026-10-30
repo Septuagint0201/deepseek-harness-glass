@@ -3,11 +3,12 @@
 A native macOS Liquid Glass window for the locally installed
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) web UI.
 This fork continues the native menus and keyboard shortcuts from PR #1.
-It targets **dsh 0.2.1-rc.3** and distributes only the Swift
+It targets **dsh 0.2.1-rc.5** and distributes only the Swift
 frontend shell: no Node.js, dsh engine, npm packages, or copied web frontend.
 
-0.2.1-rc.3 is an opt-in release candidate on npm's `next` channel; `latest` remains
-0.2.1-rc.2. Both versions are covered by real CLI and WebKit compatibility tests.
+dsh 0.2.1-rc.5 is npm `latest`, so this build is a regular release despite the
+`-rc` suffix. Compatibility tests also cover the previous regular release,
+dsh 0.2.1-rc.2.
 
 [中文说明](README.zh.md)
 
@@ -19,7 +20,7 @@ and drag the app into Applications.
 
 - macOS 26 or later, Apple Silicon.
 - A separately installed dsh and its required Node.js runtime. For the tested
-  version: `npm install -g @deepseek-ai/dsh@0.2.1-rc.3`.
+  version: `npm install -g @deepseek-ai/dsh@0.2.1-rc.5`.
 - Confirm `dsh --version` and `dsh web --no-open` work in your terminal.
 
 The app uses `DSH_HOME` when set, otherwise `~/.dsh`. Data, credentials,
@@ -30,7 +31,7 @@ The shell does not install or upgrade dsh.
 
 1. Probe `http://127.0.0.1:3080/`, or the last successfully connected local
    endpoint. `DSH_WEB_URL` overrides that address, including a custom port.
-2. Reuse a verified dsh service. dsh 0.2.1-rc.3 requires the authenticated
+2. Reuse a verified dsh service. dsh 0.2.1-rc.5 requires the authenticated
    startup URL on first connection. Paste the full URL printed by `dsh web`
    into the connection screen, or provide it in `DSH_WEB_URL`. WebKit keeps
    the session cookie; the shell saves only the address without the token.
@@ -110,8 +111,9 @@ build/icon.icns                         app icon
 This is an independent, unofficial wrapper, not affiliated with or endorsed by
 DeepSeek. MIT; see [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Release tags use `glass-<dsh version>`, currently `glass-0.2.1-rc.3`.
+Release tags use `glass-<dsh version>`, currently `glass-0.2.1-rc.5`.
 Release status follows the npm channel: `latest` builds are regular releases,
-while `next` and `alpha` builds are prereleases, regardless of version suffixes.
+while versions available only through `next` or `alpha` are prereleases, regardless
+of version suffixes. If a version is also on `latest`, `latest` takes precedence.
 `GlassPrerelease` in `glass/Info.plist` sets the initial publishing status. When a
 candidate moves to npm `latest`, its existing release can be promoted to regular Latest.

@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Release names use `glass-<compatible dsh version>`.
 
+## [glass-0.2.1-rc.5] - 2026-10-31
+
+- Target npm latest dsh 0.2.1-rc.5 as a regular release; latest takes precedence when the same version is also on next.
+- Update bundle build number, compatible CLI pin, bilingual documentation and CI matrix.
+- Retain compatibility checks for the previous regular release, dsh 0.2.1-rc.2.
+- Verify startup/authentication, WebKit rendering, Glass themes, cookie reconnects,
+  browser handoff, downloads and owned-process shutdown with the current CLI.
+
 ## [glass-0.2.1-rc.3] - 2026-10-25
 
 - Target dsh 0.2.1-rc.3 from npm next as a prerelease.
