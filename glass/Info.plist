@@ -19,15 +19,15 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.2.1</string>
+	<string>0.2.2</string>
 	<key>CFBundleVersion</key>
-	<string>15</string>
+	<string>16</string>
 	<key>GlassReleaseVersion</key>
-	<string>glass-0.2.1-rc.5</string>
+	<string>glass-0.2.2-rc.1</string>
 	<key>GlassPrerelease</key>
 	<false/>
 	<key>DSHCompatibleVersion</key>
-	<string>0.2.1-rc.5</string>
+	<string>0.2.2-rc.1</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>26.0</string>
 	<key>NSHighResolutionCapable</key>
