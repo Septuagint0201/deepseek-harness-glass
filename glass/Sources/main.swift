@@ -75,6 +75,7 @@ body[data-ds-dark-theme] {
   --dsw-specific-bubble: rgba(30, 31, 36, 0.03) !important;
   --dsw-specific-bubble-highlight: rgba(30, 31, 36, 0.03) !important;
   --dsw-hovercard-bg: rgba(38, 39, 46, 0.65) !important;
+  --dsw-alias-hovercard-bg: rgba(38, 39, 46, 0.65) !important;
   --dsw-alias-markdown-code-block: rgba(26, 27, 32, 0.03) !important;
   --dsw-alias-markdown-code-block-banner: rgba(30, 31, 36, 0.03) !important;
   --dsw-alias-label-primary: rgb(240, 242, 245) !important;
@@ -110,6 +111,7 @@ body:not([data-ds-dark-theme]) {
   --dsw-specific-bubble: rgba(255, 255, 255, 0.00) !important;
   --dsw-specific-bubble-highlight: rgba(255, 255, 255, 0.00) !important;
   --dsw-hovercard-bg: rgba(255, 255, 255, 0.55) !important;
+  --dsw-alias-hovercard-bg: rgba(255, 255, 255, 0.55) !important;
   --dsw-alias-markdown-code-block: rgba(250, 250, 250, 0.00) !important;
   --dsw-alias-markdown-code-block-banner: rgba(255, 255, 255, 0.00) !important;
   --dsw-alias-label-secondary: var(--glass-txt-secondary, rgb(53, 54, 56)) !important;

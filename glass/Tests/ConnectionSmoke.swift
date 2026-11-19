@@ -67,7 +67,9 @@ struct ConnectionSmoke {
                           const style = getComputedStyle(document.body);
                           return getComputedStyle(document.getElementById('root')).backgroundColor === 'rgba(0, 0, 0, 0)'
                             && style.getPropertyValue('--dsw-specific-input-major').includes('\(dark ? "28, 29, 34, 0.45" : "211, 217, 228, 0.55")')
-                            && style.getPropertyValue('--dsw-alias-bg-layer-2').includes('0.94');
+                            && style.getPropertyValue('--dsw-alias-bg-layer-2').includes('0.94')
+                            && ['--dsw-hovercard-bg', '--dsw-alias-hovercard-bg'].every(name =>
+                              style.getPropertyValue(name).includes('\(dark ? "38, 39, 46, 0.65" : "255, 255, 255, 0.55")'));
                         })()
                         """), "Real frontend Glass theme failed: dark=\(dark)")
                 }

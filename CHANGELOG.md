@@ -8,6 +8,8 @@ Release names use `glass-<compatible dsh version>`.
 
 - Target npm latest dsh 0.2.2-rc.5 as a regular release and retain dsh 0.2.2-rc.1 as the compatibility baseline.
 - Update the compatible CLI version, bundle build number, bilingual documentation and CI matrix.
+- Support the renamed hovercard background token while preserving the previous token for dsh 0.2.2-rc.1.
+- Check both hovercard tokens in the light and dark real-WebKit theme tests.
 - Verify startup authentication, WebKit rendering, Glass themes, cookie reconnects,
   browser handoff, downloads and owned-process shutdown.
 
